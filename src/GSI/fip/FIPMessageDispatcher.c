@@ -32,7 +32,7 @@ int dispatch(uint8_t* buffer, uint16_t length) {
 
 	while (length > 0) {
 		switch (FIPMessageState) {
-		//stato iniziale in cui ogni precedente ricezione Ë terminata
+		//stato iniziale in cui ogni precedente ricezione �� terminata
 		case COMPLETE:
 			FIPMessageState = HEADER_RECEIVED;
 			receivingFIPMessage = emptyFIPMessage();
@@ -45,7 +45,7 @@ int dispatch(uint8_t* buffer, uint16_t length) {
 		//leggo length del messaggio
 		case HEADER_RECEIVED:
 			if (length >= 2) {
-				//operazioni eseguite se Ë giunto tutto il campo length
+				//operazioni eseguite se �� giunto tutto il campo length
 				FIPMessageState = length_COMPLETE;
 				receivingFIPMessage->length = (uint16_t) (((uint16_t) buffer[1]) << 8 | buffer[0]);
 
@@ -53,7 +53,7 @@ int dispatch(uint8_t* buffer, uint16_t length) {
 				length -= 2;
 				memcpy (buffer, &target[2], length);
 			} else {
-				//operazioni eseguite se Ë giunto un solo byte del campo length
+				//operazioni eseguite se �� giunto un solo byte del campo length
 				FIPMessageState = length_INCOMPLETE;
 				receivingFIPMessage->length = (uint16_t) ((uint16_t) buffer[0]);
 				memcpy (target, buffer, length);
@@ -87,7 +87,7 @@ int dispatch(uint8_t* buffer, uint16_t length) {
 				messageReceivedCallback();
 				return 1;
 				} else {
-				//se Ë giunta solo una parte del payload la salvo in partialPayload
+				//se �� giunta solo una parte del payload la salvo in partialPayload
 				partialPayloadLenght = (uint16_t) (length);
 				partialPayload = (uint8_t*)malloc(receivingFIPMessage->length);
 				memcpy (target, buffer, length);

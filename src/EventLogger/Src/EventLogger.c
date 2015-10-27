@@ -14,6 +14,8 @@
 #include "EventLogger.h"
 #include "clock.h"
 
+int Attached_Once	= 0;
+
 #if (LOG_USE_OS == 1)
 osMutexId Log_Mutex;
 #if (LOG_USE_BUFFERING == 1)
@@ -34,12 +36,12 @@ static char* IntegerToString(int number, char* string){
 	        number *= -1;
 	    }
 	    int shifter = number;
-	    do{
+	    do{ //Move to where representation ends
 	        ++p;
 	        shifter = shifter/10;
 	    }while(shifter);
 	    *p = '\0';
-	    do{
+	    do{ //Move back, inserting digits as u go
 	        *--p = (number%10)+48;
 	        number = number/10;
 	    }while(number);
@@ -48,6 +50,7 @@ static char* IntegerToString(int number, char* string){
 
 EventLogger_Status_TypeDef EventLogger_Init(EventLogger_Handle_TypeDef *plog, EventLogger_Interface_TypeDef *ploginterface){
 
+	if(Attached_Once == 0){
 		if(plog->LogFile == NULL) plog->LogFile = LOGFILE_DEFAULT;
 		plog->Interface = ploginterface;
 
@@ -59,7 +62,7 @@ EventLogger_Status_TypeDef EventLogger_Init(EventLogger_Handle_TypeDef *plog, Ev
 		for(int i = 0; i< LOG_MAX_BUFF; i++) LogIndex_List[i] = 0;
 		osMessageQDef(Log_Queue, LOG_MAX_BUFF, uint16_t);
 		plog->os_event = osMessageCreate (osMessageQ(Log_Queue), NULL);
-		osThreadDef(LogCollector, LogCollector_Process_OS, LOG_COLLECTOR_PRIO, 0, LOG_COLLECTOR_STACKSIZE);
+		osThreadDef(LogCollector, LogCollector_Process_OS, osPriorityHigh, 0, (8 * configMINIMAL_STACK_SIZE));
 		plog->thread = osThreadCreate (osThread(LogCollector), plog);
 		plog->pLogData = 0;
 #endif	//END BUFFRING
@@ -68,12 +71,23 @@ EventLogger_Status_TypeDef EventLogger_Init(EventLogger_Handle_TypeDef *plog, Ev
 		plog->pLogData = &LogMsg;
 #endif
 
+		Attached_Once = 1;
+	}
+	else{
+		plog->Interface = ploginterface;
+		Attached_Once = 1;
+	}
 	return plog->LogStatus;
 }
 
 EventLogger_Status_TypeDef EventLogger_DeInit(EventLogger_Handle_TypeDef *plog){
 
-	plog->LogStatus = plog->Interface->DeInit(plog);
+	if(Attached_Once == 1){
+		plog->LogStatus = plog->Interface->DeInit(plog);
+		plog->Interface = 0;
+		Attached_Once = 2;
+	}
+
 	return plog->LogStatus;
 }
 
@@ -81,6 +95,7 @@ EventLogger_Status_TypeDef EventLogger_LogEvent(EventLogger_Handle_TypeDef *plog
 												uint Severity, uint Node_id, char* Function_id,
 												...){
 
+	//if(plog->LogStatus == LOG_BUFFER_FULL) return LOG_BUFFER_FULL;
 	EventLogger_Log_TypeDef		TempLog;
 	TempLog.LogString[0] = '\0';
 	char String[20];
@@ -141,7 +156,7 @@ EventLogger_Status_TypeDef EventLogger_LogEvent(EventLogger_Handle_TypeDef *plog
 
 	strcat(TempLog.LogString, ",");
 	strcat(TempLog.LogString, IntegerToString(Node_id, String));
-	strcat(TempLog.LogString, ",");
+	strcat(TempLog.LogString, "@");
 	strcat(TempLog.LogString, Function_id);
 
 	va_list Description_Params;
@@ -200,7 +215,14 @@ EventLogger_Status_TypeDef EventLogger_LogEvent(EventLogger_Handle_TypeDef *plog
 	strcat(Time, ",");
 #if	(LOG_USE_BUFFERING == 1)
 	int i = 0;
-	while(LogIndex_List[i] != 0) {i++;}
+	while(LogIndex_List[i] != 0) {
+		i++;
+		if(i == LOG_MAX_BUFF){
+			osMutexRelease(Log_Mutex);
+			plog->LogStatus = LOG_BUFFER_FULL;
+			return plog->LogStatus;
+		}
+	}
 	LogIndex_List[i] = 1;
 	strcpy(Log_List[i].LogString, Time);
 	strcat(Log_List[i].LogString, TempLog.LogString);
@@ -241,6 +263,8 @@ static void LogCollector_Process_OS(void const * argument)
   {
     event = osMessageGet(((EventLogger_Handle_TypeDef *)argument)->os_event, osWaitForever );
 
+    //if(((EventLogger_Handle_TypeDef *)argument)-> LogStatus == LOG_BUFFER_FULL)
+
     if( event.status == osEventMessage  )
     {
     	((EventLogger_Handle_TypeDef *)argument)->pLogData = &Log_List[event.value.v];
@@ -249,7 +273,7 @@ static void LogCollector_Process_OS(void const * argument)
     	LogIndex_List[event.value.v] = 0;
     }
 
-    osDelay(LOG_COLLECTOR_PERIOD);
+    //osDelay(0);
    }
 }
 

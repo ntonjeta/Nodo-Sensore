@@ -41,7 +41,6 @@
  * @{
  */
 #include "stm32f4xx_hal.h"
-#include "libUART.h"
 /** @defgroup HAL_MSP
  * @brief HAL MSP module.
  * @{
@@ -58,79 +57,79 @@
  * @{
  */
 
-/**
- * @brief UART MSP Initialization
- *        This function configures the hardware resources used in this example:
- * @retval None
- */
-void HAL_UART_MspInit(UART_HandleTypeDef *huart){
-
-	// Configurazione porti GPIO per UART4
-	__UART5_CLK_ENABLE();	/* Abilita la periferica locata sul bus APB1 */
-	__GPIOD_CLK_ENABLE();	/* Abilito il clock per il porto GPIOD */
-	__GPIOC_CLK_ENABLE();	/* Abilito il clock per il porto GPIOC */
-
-	GPIO_InitTypeDef  GPIO_InitStructure;	/* Handle che conterr������������������ le informazioni di configurazione del porto GPIO scelto */
-
-	GPIO_InitStructure.Pull  = GPIO_NOPULL;
-	GPIO_InitStructure.Speed = GPIO_SPEED_FAST;
-	GPIO_InitStructure.Alternate = GPIO_AF8_UART5; /* Ad UART4 ������������������ associata la AF8 */
-	GPIO_InitStructure.Mode = GPIO_MODE_AF_PP;
-
-	GPIO_InitStructure.Pin = GPIO_PIN_12; /* OR Pin da abilitare (Pc12 = Tx) */
-	HAL_GPIO_Init(
-			GPIOC,		/* Inizializza GPIO A ...*/
-			&GPIO_InitStructure	/* ... secondo la configurazione prima eseguita */
-	);
-	GPIO_InitStructure.Pin = GPIO_PIN_2; /* OR Pin da abilitare (PD2 = Rx) */
-	HAL_GPIO_Init(
-			GPIOD,		/* Inizializza GPIO A ...*/
-			&GPIO_InitStructure	/* ... secondo la configurazione prima eseguita */
-	);
-
-	/* Da questo momento in poi i PIN PA0 e PA1 saranno utilizzati per la Tx e Rx di UART4. */
-	HAL_NVIC_SetPriority(
-			UART5_IRQn, 	/*!< UART4 global Interrupt - STM32 specific Interrupt Number - Unico vettore interruzioni per UART4*/
-			0x02,		/* Valore di prorit������ */
-			0x00	/* Valore di Sub-Priority */
-	);
-
-	HAL_NVIC_EnableIRQ(UART5_IRQn);
-	__HAL_UART_ENABLE_IT(huart, UART_IT_RXNE);
-	__HAL_UART_DISABLE_IT(huart, UART_IT_LBD);
-	__HAL_UART_DISABLE_IT(huart, UART_IT_TXE);
-	__HAL_UART_DISABLE_IT(huart, UART_IT_TC);
-
-}
-
-/**
-  * @brief CRC MSP Initialization
-  *        This function configures the hardware resources used in this example:
-  *           - Peripheral's clock enable
-  * @param hcrc: CRC handle pointer
-  * @retval None
-  */
-void HAL_CRC_MspInit(CRC_HandleTypeDef *hcrc)
-{
-   /* CRC Peripheral clock enable */
-  __HAL_RCC_CRC_CLK_ENABLE();
-}
-
-/**
-  * @brief CRC MSP De-Initialization
-  *        This function freeze the hardware resources used in this example:
-  *          - Disable the Peripheral's clock
-  * @param hcrc: CRC handle pointer
-  * @retval None
-  */
-void HAL_CRC_MspDeInit(CRC_HandleTypeDef *hcrc)
-{
-  /* Enable CRC reset state */
-  __HAL_RCC_CRC_FORCE_RESET();
-
-  /* Release CRC from reset state */
-  __HAL_RCC_CRC_RELEASE_RESET();
-}
+///**
+// * @brief UART MSP Initialization
+// *        This function configures the hardware resources used in this example:
+// * @retval None
+// */
+//void HAL_UART_MspInit(UART_HandleTypeDef *huart){
+//
+//	// Configurazione porti GPIO per UART4
+//	__UART5_CLK_ENABLE();	/* Abilita la periferica locata sul bus APB1 */
+//	__GPIOD_CLK_ENABLE();	/* Abilito il clock per il porto GPIOD */
+//	__GPIOC_CLK_ENABLE();	/* Abilito il clock per il porto GPIOC */
+//
+//	GPIO_InitTypeDef  GPIO_InitStructure;	/* Handle che conterr������������������ le informazioni di configurazione del porto GPIO scelto */
+//
+//	GPIO_InitStructure.Pull  = GPIO_NOPULL;
+//	GPIO_InitStructure.Speed = GPIO_SPEED_FAST;
+//	GPIO_InitStructure.Alternate = GPIO_AF8_UART5; /* Ad UART4 ������������������ associata la AF8 */
+//	GPIO_InitStructure.Mode = GPIO_MODE_AF_PP;
+//
+//	GPIO_InitStructure.Pin = GPIO_PIN_12; /* OR Pin da abilitare (Pc12 = Tx) */
+//	HAL_GPIO_Init(
+//			GPIOC,		/* Inizializza GPIO A ...*/
+//			&GPIO_InitStructure	/* ... secondo la configurazione prima eseguita */
+//	);
+//	GPIO_InitStructure.Pin = GPIO_PIN_2; /* OR Pin da abilitare (PD2 = Rx) */
+//	HAL_GPIO_Init(
+//			GPIOD,		/* Inizializza GPIO A ...*/
+//			&GPIO_InitStructure	/* ... secondo la configurazione prima eseguita */
+//	);
+//
+//	/* Da questo momento in poi i PIN PA0 e PA1 saranno utilizzati per la Tx e Rx di UART4. */
+//	HAL_NVIC_SetPriority(
+//			UART5_IRQn, 	/*!< UART4 global Interrupt - STM32 specific Interrupt Number - Unico vettore interruzioni per UART4*/
+//			PRIORITY,		/* Valore di prorit������ */
+//			SUBPRIORITY	/* Valore di Sub-Priority */
+//	);
+//
+//	HAL_NVIC_EnableIRQ(UART5_IRQn);
+//	__HAL_UART_ENABLE_IT(huart, UART_IT_RXNE);
+//	__HAL_UART_DISABLE_IT(huart, UART_IT_LBD);
+//	__HAL_UART_DISABLE_IT(huart, UART_IT_TXE);
+//	__HAL_UART_DISABLE_IT(huart, UART_IT_TC);
+//
+//}
+//
+///**
+//  * @brief CRC MSP Initialization
+//  *        This function configures the hardware resources used in this example:
+//  *           - Peripheral's clock enable
+//  * @param hcrc: CRC handle pointer
+//  * @retval None
+//  */
+//void HAL_CRC_MspInit(CRC_HandleTypeDef *hcrc)
+//{
+//   /* CRC Peripheral clock enable */
+//  __HAL_RCC_CRC_CLK_ENABLE();
+//}
+//
+///**
+//  * @brief CRC MSP De-Initialization
+//  *        This function freeze the hardware resources used in this example:
+//  *          - Disable the Peripheral's clock
+//  * @param hcrc: CRC handle pointer
+//  * @retval None
+//  */
+//void HAL_CRC_MspDeInit(CRC_HandleTypeDef *hcrc)
+//{
+//  /* Enable CRC reset state */
+//  __HAL_RCC_CRC_FORCE_RESET();
+//
+//  /* Release CRC from reset state */
+//  __HAL_RCC_CRC_RELEASE_RESET();
+//}
 
 /**
  * @}

@@ -10,8 +10,12 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include "clock_config.h"
 
-#define TIME_SERVER 0		/*da settare a 1 se server, 0 se client*/
+typedef enum{
+	SYNC_OK	,
+	SYNC_FAIL
+}SyncResultTypedef;
 
 typedef struct {
 
@@ -28,14 +32,21 @@ typedef struct {
 void init_time(uint32_t timeout);
 void set_timeout(uint32_t timeout);
 void set_time(sys_time _time);
-void get_time(sys_time _time);
+sys_time get_time();
 #if TIME_SERVER == 1
 void host_send_time(uint8_t client_id);
 #else
 void client_sync_time(sys_time temp);
+void client_request_sync();
 #endif
 uint8_t is_time_enabled();
 void IncTime(void);
+
+SyncResultTypedef Lower_level_send(uint8_t client_id, sys_time* payload);
+
+#if TIME_SERVER == 0
+SyncResultTypedef Time_received_from_net(void* packet);
+#endif
 
 extern sys_time _sys_time;
 

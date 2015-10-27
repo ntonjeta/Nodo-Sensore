@@ -1,6 +1,9 @@
 eclipse.preferences.version=1
+encoding//include/applayer.h=UTF-8
+encoding//include/network_config.h=UTF-8
+encoding//src/GSI/fip/FIPMessageDispatcher.c=UTF-8
 encoding//src/GSI/gsi.c=UTF-8
+encoding//src/NLS/routing/src/data_plane.c=UTF-8
 encoding//src/Security/src/join.c=UTF-8
-encoding//src/Security/src/libUART.c=UTF-8
 encoding//src/main.c=UTF-8
 encoding//src/stm32f4xx_hal_msp.c=UTF-8

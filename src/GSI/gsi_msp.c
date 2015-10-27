@@ -43,9 +43,9 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
     /* Peripheral clock enable */
     __I2C3_CLK_ENABLE();
    /* System interrupt init*/
-    HAL_NVIC_SetPriority(I2C3_EV_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(I2C3_EV_IRQn, 10, 0);
     HAL_NVIC_EnableIRQ(I2C3_EV_IRQn);
-    HAL_NVIC_SetPriority(I2C3_ER_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(I2C3_ER_IRQn, 11, 0);
     HAL_NVIC_EnableIRQ(I2C3_ER_IRQn);
   }
 
@@ -149,7 +149,7 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
     /* System interrupt init*/
-    HAL_NVIC_SetPriority(ADC_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(ADC_IRQn, 0xF, 0);
     HAL_NVIC_EnableIRQ(ADC_IRQn);
   }
 

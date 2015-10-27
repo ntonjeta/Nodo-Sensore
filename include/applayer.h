@@ -6,7 +6,11 @@ typedef uint8_t OpCode;
 #define CONFIGSENSOR 	((uint8_t)0x01) 		//configurazione sensore 									###	Centro Controllo -> Nodo Sensore
 #define DATA 			((uint8_t)0x02)			//dato di misurazione										###	Nodo Sensore -> Centro Controllo
 #define JOIN			((uint8_t)0x03)			//join nodo, fornisce la chiave personale del nodo e l'id	### Centro Controllo <- Nodo centrale
-#define REPLYJOIN		((uint8_t)0x04)			//replyjoin risponde al nodo con la chiave condivisa			### Centro Controllo -> Nodo Centrale
+#define REPLYJOIN		((uint8_t)0x04)			//replyjoin risponde al nodo con la chiave condivisa		### Centro Controllo -> Nodo Centrale
+#if USE_LOG == 1
+#define LOG          ((uint8_t)0x06)
+#endif
+#define SYNC         ((uint8_t)0x07)  //richiesta di sincronizzazione da parte di un nodo della rete
 /*#####################*/
 
 
@@ -19,7 +23,7 @@ typedef struct __attribute__((aligned(1),packed)) payload  {
 	int32_t ht;			//high th.shold
 	int32_t lt;			//low  th.shold
 	int16_t period;		//periodo
-	int8_t  priority;	//priorità
+	int8_t  priority;	//priorit��
 }Payload;
 
 //128 bit application package
@@ -28,6 +32,17 @@ typedef struct netPackage{
 	OpCode 	code;
 	Payload	payload;
 } NetPackage;
+
+typedef struct __attribute__((aligned(1),packed)) {
+  uint8_t opCode;
+  uint8_t sensorID;      // ID sensore
+  int16_t value;         // Valore
+  uint8_t alarm;         // Allarme
+  int32_t highThreshold; // High threshold
+  int32_t lowThreshold;  // Low  threshold
+  int16_t period;        // Periodo
+  int8_t  priority;      // Priorit���
+} NetMessage;
 
 
 

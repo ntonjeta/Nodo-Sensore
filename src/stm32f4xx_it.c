@@ -151,6 +151,7 @@ void SysTick_Handler(void)
 	}
 
 	HAL_IncTick();
+//	IncTime();
 	/* Call user callback */
 	//HAL_SYSTICK_IRQHandler();
 }

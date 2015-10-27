@@ -6,8 +6,7 @@
 // ----------------------------------------------------------------------------
 //
 
-#include "EventLogger.h"
-#include "clock.h"
+
 #include "gsi.h"
 /* Kernel includes. */
 #include "FreeRTOS.h"
@@ -18,6 +17,11 @@
 #include "SN_Type.h"
 //#include "stub.h"
 #include "applayer.h"
+#include "TL_API.h"
+#include "cal_def.h"
+#include "cal.h"
+#include "network_config.h"
+#include "net_apis_LL.h"
 //Log includes
 #include "EventLogger.h"
 #include "clock.h"
@@ -41,6 +45,8 @@ uint16_t  N_sensor = 0;
 USBD_HandleTypeDef USBD_Device;
 #endif
 
+extern struct NLS_HandleTypedef hNLS;
+
 /* Task Prototypes definition -----------------------------------------------*/
 static void SN_TxNet (void *pvParameters);
 static void SN_ManageRequest (void *pvParameters);
@@ -59,87 +65,81 @@ Bool SN_estract_net_package();
 /* Funzione di comodo da rimuovere */
 void errorHandlermain();
 
+static void joinTask( void *pvParameters ){
+	BSP_LED_On(LED3);
+	while (BSP_PB_GetState(BUTTON_KEY) != 1) {
+	}
 
+	/* Wait for User Button release before starting the Communication */
+	while (BSP_PB_GetState(BUTTON_KEY) != 0) {
+	}
+	BSP_LED_Off(LED3);
+	joinRequest();
+	vTaskDelete(NULL);
+}
 
 int main(int argc, char* argv[])
-{
+{	BSP_PB_Init(BUTTON_KEY, BUTTON_MODE_GPIO);
+BSP_LED_Init(LED6);
+BSP_LED_Init(LED3);
+BSP_LED_Init(LED4);
+BSP_LED_Init(LED5);
 #ifdef TESTING
-	BSP_LED_Init(LED3);
-	BSP_LED_Init(LED4);
 
-	USBD_Init(&USBD_Device, &VCP_Desc, 0);
-	USBD_RegisterClass(&USBD_Device, &USBD_CDC);
-	USBD_CDC_RegisterInterface(&USBD_Device, &USBD_CDC_Template_fops);
-	USBD_Start(&USBD_Device);
-	HAL_Delay(4000);
+USBD_Init(&USBD_Device, &VCP_Desc, 0);
+USBD_RegisterClass(&USBD_Device, &USBD_CDC);
+USBD_CDC_RegisterInterface(&USBD_Device, &USBD_CDC_Template_fops);
+USBD_Start(&USBD_Device);
+HAL_Delay(4000);
 #endif
-	//	int i=0;
-	//   Data dato;
-	HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
-	//Parte di inizializzazione
-	//   if(!initrete()){
-	//	   errorHandlermain();
-	//   }
-	EventLogger_Init(&LOG_HANDLE, &LOG_Interface);
-	init_time(1000);
-	setup();
-	initialize();
-	EventLogger_LogInit(&LOG_HANDLE, &LOG_Interface);
-	init_time(1000);
+//	int i=0;
+//   Data dato;
+HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
+//Parte di inizializzazione
+//   if(!initrete()){
+//	   errorHandlermain();
+//   }
+initialize();
+TL_init();
+NLS_LL_enable_if(&hNLS,IF1);    //UART
+EventLogger_Init(&LOG_HANDLE, &LOG_Interface);
+init_time(1000);
 
-	if(initSensors() != OP_OK){
-		errorHandlermain();
-	}
-	if(SN_initSensor() != TRUE){
-		errorHandler();
-	}
-
-	//fine inizializzazione
-	//DA FARE CONTROLLARE ERRORI ISTANZIAZIONE
-	//A questo punto si suppone che sia il NS che il CC abbino la stessa lista dei sensori
-	//STUB task che genera pacchetti in ricezione
-	//   xTaskCreate (on_receive_segment,"StubRxTask",100,NULL,tskIDLE_PRIORITY,NULL);
-	//Task che gestisce le richieste
-	xTaskCreate (SN_ManageRequest, "AsynchRequestManager",100,NULL,tskIDLE_PRIORITY,NULL);
-	//Task che gestisce la trasmissione
-	xTaskCreate (SN_TxNet,"TrasmitOnNet",100,NULL,tskIDLE_PRIORITY,NULL);
-	//Instanzio le code di communicazione tra task
-	SN_mng_queue = xQueueCreate(10,sizeof(NetPackage));
-	SN_tx_queue  = xQueueCreate(10,sizeof(NetPackage));
-	//Mi devo inizializzare le code mmm forse lo fa freeRTOS
-//	joinRequest();
-	vTaskStartScheduler();
-
-
-
-	for( ;; ) __NOP();
+if(initSensors() != OP_OK){
+	errorHandlermain();
+}
+if(SN_initSensor() != TRUE){
+	errorHandler();
 }
 
 
-void onJoinSuccess(){
-//	if(initSensors() != OP_OK){
-//		errorHandlermain();
-//	}
-//	if(SN_initSensor() != TRUE){
-//		errorHandler();
-//	}
-//
-//	//fine inizializzazione
-//	//DA FARE CONTROLLARE ERRORI ISTANZIAZIONE
-//	//A questo punto si suppone che sia il NS che il CC abbino la stessa lista dei sensori
-//	//STUB task che genera pacchetti in ricezione
-//	//   xTaskCreate (on_receive_segment,"StubRxTask",100,NULL,tskIDLE_PRIORITY,NULL);
-//	//Task che gestisce le richieste
-//	xTaskCreate (SN_ManageRequest, "AsynchRequestManager",100,NULL,tskIDLE_PRIORITY,NULL);
-//	//Task che gestisce la trasmissione
-//	xTaskCreate (SN_TxNet,"TrasmitOnNet",100,NULL,tskIDLE_PRIORITY,NULL);
-//	//Instanzio le code di communicazione tra task
-//	SN_mng_queue = xQueueCreate(10,sizeof(NetPackage));
-//	SN_tx_queue  = xQueueCreate(10,sizeof(NetPackage));
-//	//Mi devo inizializzare le code mmm forse lo fa freeRTOS
-//	vTaskStartScheduler();
-//	for( ;; ) __NOP();
+xTaskCreate( joinTask,                 /* Pointer to the function that implements the task. */
+		"Main",             /* Text name for the task. For debugging only. */
+		300,                                /* Stack depth in words. */
+		NULL,                               /* We are not using the task parameter. */
+		tskIDLE_PRIORITY+2, /* Task Priority */
+		NULL                                /* We are not going to use the task handle. */
+);
+//fine inizializzazione
+//DA FARE CONTROLLARE ERRORI ISTANZIAZIONE
+//A questo punto si suppone che sia il NS che il CC abbino la stessa lista dei sensori
+//STUB task che genera pacchetti in ricezione
+//   xTaskCreate (on_receive_segment,"StubRxTask",100,NULL,tskIDLE_PRIORITY,NULL);
+//Task che gestisce le richieste
+xTaskCreate (SN_ManageRequest, "AsynchRequestManager",300,NULL,tskIDLE_PRIORITY+2,NULL);
+//Task che gestisce la trasmissione
+xTaskCreate (SN_TxNet,"TrasmitOnNet",300,NULL,tskIDLE_PRIORITY+2,NULL);
+//Instanzio le code di communicazione tra task
+SN_mng_queue = xQueueCreate(10,sizeof(NetPackage));
+SN_tx_queue  = xQueueCreate(10,sizeof(NetPackage));
+//Mi devo inizializzare le code mmm forse lo fa freeRTOS
+vTaskStartScheduler();
+
+for( ;; ) __NOP();
+
 }
+
+
 /* PRIVATE FUNCTION --------------------------------*/
 Bool SN_initSensor()
 {
@@ -229,18 +229,20 @@ static void SN_TxNet (void *pvParameters){
 	while(1){
 		if(xQueueReceive(SN_tx_queue,&packet,MAX_WAIT) != pdFALSE)
 		{ //Wait on queue message
-//			switch(packet.code){
-//			case JOIN: //SICUREZZA
-//				break;
-//			case DATA:
-//				//Trasmetto il pacchetto alla rete
-//				//DA GESTIRE LA PRIORITA DEL PCCHETTO MI SERVONO INTERFACCE DI RETE
-//				if(!tx_net(&packet)){
-//					errorHandlermain();
-//				}
-//				break;
-//			}
+			//			switch(packet.code){
+			//			case JOIN: //SICUREZZA
+			//				break;
+			//			case DATA:
+			//				//Trasmetto il pacchetto alla rete
+			//				//DA GESTIRE LA PRIORITA DEL PCCHETTO MI SERVONO INTERFACCE DI RETE
+			//				if(!tx_net(&packet)){
+			//					errorHandlermain();
+			//				}
+			//				break;
+			//			}
 			sendDataPacket(&packet);
+			EventLogger_LogEvent(&LOG_HANDLE, APPLICATION, INFORMATIONAL, 0x0009, "sendDataPacket()", LOG_END);
+
 		}
 		vTaskDelay(TASK_WAIT);
 	}
@@ -264,7 +266,6 @@ static void SN_ManageRequest( void *pvParameters)
 	while(1){
 		//CE SEMPRE DA FARE IL CONTROLLO SITUAZIONI ANOMALE
 		//Prendere il pacchetto dalla coda
-		EventLogger_LogEvent(&LOG_HANDLE, APPLICATION, WARNING, 36, "prova()", LOG_INT, "PROVA", 1, LOG_END);
 		if(xQueueReceive(SN_mng_queue,&ap_package,MAX_WAIT) != pdFALSE){
 			work_id = ap_package.payload.id;
 			work_periodo = sensor[work_id].read_period_ms;
@@ -276,9 +277,11 @@ static void SN_ManageRequest( void *pvParameters)
 				}
 
 				//Controlla ALARME
-				if(dato.value < ap_package.payload.lt || dato.value > ap_package.payload.ht){
+				if(dato.value < sensor[work_id].treshold.LowThreshold || dato.value > sensor[work_id].treshold.HighThreshold){
 					//Supera le soglie
 					ap_package.payload.alarm = 1;
+				}else {
+					ap_package.payload.alarm = 0;
 				}
 				//Tengo il dato lo devo mettere in un pacchetto
 				if(SN_mk_data_pack(dato,&ap_package) != TRUE){
@@ -313,6 +316,9 @@ static void SN_ManageRequest( void *pvParameters)
 				break;
 			case REPLYJOIN: //SICUREZZA
 				break;
+			case SYNC:		//Ricevuta risposta dal server: si deve sincronizzare l'orologio
+				//client_sync_time(ap_package.payload); //controllare formato pacchetto
+				break;
 			}
 		}else vTaskDelay(TASK_WAIT);
 	}
@@ -332,9 +338,12 @@ static void SN_periodic_read (xTimerHandle xTimer)
 	//inserisco l'id
 	packet.payload.id = (uint8_t) lArrayIndex;
 	//Controlo i threshold e nel caso inserisco l'allarme
-	if(dato.value < packet.payload.lt || dato.value > packet.payload.ht){
+	if(dato.value < sensor[packet.payload.id].treshold.LowThreshold || dato.value > sensor[packet.payload.id].treshold.HighThreshold){
 		//Supera le soglie
 		packet.payload.alarm = 1;
+	}else{
+		packet.payload.alarm = 0;
+
 	}
 
 	if(SN_mk_data_pack(dato,&packet) != TRUE){

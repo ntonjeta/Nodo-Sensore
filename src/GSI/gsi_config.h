@@ -42,7 +42,7 @@
 //Configura primo sensore
 #define  ID_1 		0
 #define  CLASS_1	1
-#define  LINK_1		1
+#define  LINK_1		4
 #define  ADDRESS_1	0
 
 //Configura sencondo sensore

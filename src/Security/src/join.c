@@ -11,11 +11,11 @@
 #include "diag/Trace.h"
 #include "security.h"
 #include "applicationConfig.h"
-#include "libUART.h"
 //#include "projdefs.h"
 #include "applayer.h"
 #include "FreeRTOS.h"
 #include "queue.h"
+#include "stm32f4_discovery.h"
 
 #ifdef CENTRAL_NODE
 #include "hashTable.h"
@@ -49,10 +49,10 @@ SEC_cryp_handle sch;
 SEC_HMAC_handle shh;
 
 HAL_StatusTypeDef receive(){
-	return usart_receive();
+//	return usart_receive();
 }
 HAL_StatusTypeDef send(void* frame/*,uint16_t size*/){
-	return usart_send(frame);
+//	return usart_send(frame);
 }
 
 void initialize(){
@@ -91,7 +91,7 @@ void initialize(){
 
 }
 
-void netLevelCallback(uint8_t *pData){
+void on_receive_segment_best_effort(uint8_t* pData, uint16_t len, uint16_t src_address){
 	cleanVector((uint8*)&frame,sizeof(frame));
 	memcpy(&(frame.ID),pData,FRAMEIDLEN);
 	memcpy(frame.sourceID,(pData+FRAMEIDLEN),IDLEN);
@@ -167,8 +167,8 @@ void joinRequest() {
 	// creazione del msg cifrato con all'interno l'ID della scheda
 	uint32 ciplen;
 	SEC_Encrypt(&sch,frame.sourceID,IDLEN,frame.msg,&ciplen);
-
-	send(&frame);
+	BSP_LED_On(LED6);
+    send_segment_best_effort((uint8*) &frame, sizeof(frame));
 }
 
 #endif /* OPERATIVE_NODE */
@@ -249,7 +249,7 @@ void onJoinResponse(){
 
 
 			// invio la frame di ack
-			send(&frame);
+			send_segment_best_effort((uint8*) &frame, sizeof(frame));
 
 		}else{
 			//hmac non verificato: rifiuta il segreto e ricomincio la procedura di join
@@ -338,7 +338,7 @@ void onSecretChangeStart(){
 
 
 			// invio la frame di ack
-			send(&frame);
+			send_segment_best_effort((uint8*) &frame, sizeof(frame));
 
 		}else{
 			//LOG
@@ -462,7 +462,7 @@ void onDataPacketReceived(){
 		//		xQueueSendToBack(SN_tx_queue,&ap_package,MAX_WAIT);
 		NetPackage pNetPackage;
 		memcpy(&pNetPackage,frame.msg,16);
-		xQueueSendFromISR(SN_mng_queue , &pNetPackage, 0);
+		xQueueSendToBackFromISR(SN_mng_queue , &pNetPackage, pdFALSE);
 	}
 	else{
 		//Butta la frame
@@ -475,17 +475,16 @@ void onDataPacketReceived(){
 /*Funzione di invio frame Dati*/
 void sendDataPacket(void *data){
 
-	SEC_ApplicationFrameTypedef* frameTmp = (SEC_ApplicationFrameTypedef*)malloc(sizeof(SEC_ApplicationFrameTypedef));
-	cleanVector(frameTmp,sizeof(SEC_ApplicationFrameTypedef));
+	cleanVector(&frame,sizeof(frame));
 	//preparo la frame dati
-	frameTmp->ID=DATA_FRAME;
-	memcpy(frameTmp->sourceID, STM32_UUID, IDLEN);
-	memcpy(frameTmp->msg, data, MAX_LENGTH);
+	frame.ID=DATA_FRAME;
+	memcpy(frame.sourceID, STM32_UUID, IDLEN);
+	memcpy(frame.msg, data, MAX_LENGTH);
 
-	SEC_HMAC(&shh,frameTmp,HMAC_LENGTH,frameTmp->digest);
+	SEC_HMAC(&shh,&frame,HMAC_LENGTH,frame.digest);
 
 	// invio la frame di ack
-	send(frameTmp);
+    send_segment_best_effort((uint8*) &frame, sizeof(frame));
 }
 #endif /* OPERATIVE_NODE */
 
